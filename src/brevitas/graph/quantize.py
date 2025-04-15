@@ -273,7 +273,8 @@ def align_input_quant(
                     shared_quant_identity.act_quant.fused_activation_quant_proxy.tensor_quant
                     .int_scaling_impl}
         injector = module.act_quant.quant_injector.let(**partial_config)
-        return module_type(act_quant=injector, return_quant_tensor=True)
+        input_quant_injector = module.act_quant.quant_injector
+        return module_type(input_quant=input_quant_injector, act_quant=injector, return_quant_tensor=True)
     # In all other cases, return the name of the QuantIdentity that will be added at the output of
     # the module
     else:
