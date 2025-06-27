@@ -57,8 +57,10 @@ class QuantBasicBlock(nn.Module):
             act_bit_width=8,
             weight_bit_width=8,
             weight_quant=Int8WeightPerChannelFloat,
-            act_quant=None):
+            act_quant=None,
+            quant_type='FIXED'):
         super(QuantBasicBlock, self).__init__()
+        self.quant_type = quant_type
         self.conv1 = make_quant_conv2d(
             in_planes,
             planes,
@@ -303,10 +305,10 @@ def float_weight_act_class_factory(
 def get_params_from_config(cfg):
     
     def get_float_params(cfg):
-        weight_bit_width = cfg.getint('FLOAT', 'WEIGHT_BIT_WIDTH')
+        weight_bit_width = cfg.getint('QUANT', 'WEIGHT_BIT_WIDTH')
         weight_exp_bits = cfg.getint('FLOAT', 'WEIGHT_EXPONENT_BITS')
         weight_mant_bits = cfg.getint('FLOAT', 'WEIGHT_MANTISSA_BITS')
-        act_bit_width = cfg.getint('FLOAT', 'ACT_BIT_WIDTH')
+        act_bit_width = cfg.getint('QUANT', 'ACT_BIT_WIDTH')
         act_exp_bits = cfg.getint('FLOAT', 'ACT_EXPONENT_BITS')
         act_mant_bits = cfg.getint('FLOAT', 'ACT_MANTISSA_BITS')
         
@@ -321,16 +323,17 @@ def get_params_from_config(cfg):
     num_classes = cfg.getint('MODEL', 'NUM_CLASSES')
     kwargs = {
         'block_impl':QuantBasicBlock,
-        'num_blocks':[2, 2, 2, 2], 
+        'num_blocks':[2, 2, 2, 2],
+        'quant_type': quant_type,
     }
     kwargs['num_classes'] = num_classes
-    kwargs['weight_bit_width'] = weight_bit_width
-    kwargs['act_bit_width'] = act_bit_width
     if quant_type == 'FLOAT':
         weight_bit_width, weight_exp_bits, weight_mant_bits, act_bit_width, act_exp_bits, act_mant_bits = get_float_params(cfg)
         weight_quant_class, act_quant_class = float_weight_act_class_factory(
             act_bit_width, weight_bit_width, act_exp_bits, act_mant_bits, weight_exp_bits, weight_mant_bits
         )
+        kwargs['weight_bit_width'] = weight_bit_width
+        kwargs['act_bit_width'] = act_bit_width
         kwargs['weight_quant'] = weight_quant_class
         kwargs['act_quant'] = act_quant_class
         kwargs['first_layer_weight_quant'] = weight_quant_class
@@ -342,6 +345,8 @@ def get_params_from_config(cfg):
         kwargs['act_bit_width'] = cfg.getint('QUANT', 'ACT_BIT_WIDTH')
     else:
         raise ValueError('No valid QUANT value defined in the config')
+    
+    return kwargs
 
 
 def quant_resnet18(cfg) -> QuantResNet:

@@ -149,3 +149,5 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+# --gpus 0 --num_workers 8 --network RESNET18_8W8A_FLOAT --experiments outputs/8W8A_test_export --epochs 2 --export_qonnx

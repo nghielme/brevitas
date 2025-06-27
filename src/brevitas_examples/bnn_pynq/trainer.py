@@ -134,7 +134,7 @@ class Trainer(object):
         # Resume checkpoint, if any
         if args.resume:
             print('Loading model checkpoint at: {}'.format(args.resume))
-            package = torch.load(args.resume, map_location='cpu')
+            package = torch.load(args.resume, map_location=self.device)
             model_state_dict = package['state_dict']
             model.load_state_dict(model_state_dict, strict=args.strict)
 
@@ -300,7 +300,7 @@ class Trainer(object):
 
             # Perform eval
             with torch.no_grad():
-                top1avg = self.eval_model(epoch)
+                top1avg = self.eval_model()
 
             # checkpoint
             if top1avg >= self.best_val_acc and not self.args.dry_run:
@@ -375,7 +375,7 @@ class Trainer(object):
         
         input_shape = tuple(map(int, input_shape.split(','))) # Convert to tuple of integers
 
-        state_dict = torch.load(os.path.join(self.output_dir_path, 'checkpoints', 'best.tar'), map_location='cpu')
+        state_dict = torch.load(os.path.join(self.output_dir_path, 'checkpoints', 'best.tar'), map_location=self.device)
         self.model.load_state_dict(state_dict['state_dict'], strict=True)
         self.model.eval()
         
