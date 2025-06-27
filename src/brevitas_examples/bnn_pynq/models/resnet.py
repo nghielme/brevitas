@@ -11,7 +11,9 @@ from brevitas.quant import Int8WeightPerChannelFloat
 from brevitas.quant import Int8WeightPerTensorFloat
 from brevitas.quant import Int32Bias
 from brevitas.quant import TruncTo8bit
-from brevitas.quant_tensor import QuantTensor
+from brevitas.quant.experimental.float import Fp4e2m1Act, Fp4e2m1Weight, Fp6e2m3Act, Fp6e2m3Weight, Fp6e3m2Act, Fp6e3m2Weight, Fp8e4m3Act, Fp8e4m3Weight, Fp8e5m2Weight, Fp8e5m2Act
+from brevitas.quant.scaled_int import Uint8ActPerTensorFloat
+from brevitas.quant_tensor.base_quant_tensor import QuantTensor
 
 
 def make_quant_conv2d(
@@ -20,6 +22,7 @@ def make_quant_conv2d(
         kernel_size,
         weight_bit_width,
         weight_quant,
+        act_quant=None,
         stride=1,
         padding=0,
         bias=False):
@@ -31,7 +34,10 @@ def make_quant_conv2d(
         padding=padding,
         bias=bias,
         weight_quant=weight_quant,
-        weight_bit_width=weight_bit_width)
+        weight_bit_width=weight_bit_width,
+        input_quant=act_quant, # wrong
+        # output_quant=act_quant
+        )
 
 
 class QuantBasicBlock(nn.Module):
@@ -50,7 +56,8 @@ class QuantBasicBlock(nn.Module):
             shared_quant_act=None,
             act_bit_width=8,
             weight_bit_width=8,
-            weight_quant=Int8WeightPerChannelFloat):
+            weight_quant=Int8WeightPerChannelFloat,
+            act_quant=None):
         super(QuantBasicBlock, self).__init__()
         self.conv1 = make_quant_conv2d(
             in_planes,
@@ -60,9 +67,10 @@ class QuantBasicBlock(nn.Module):
             padding=1,
             bias=bias,
             weight_bit_width=weight_bit_width,
-            weight_quant=weight_quant)
+            weight_quant=weight_quant,
+            act_quant=act_quant)
         self.bn1 = nn.BatchNorm2d(planes)
-        self.relu1 = qnn.QuantReLU(bit_width=act_bit_width, return_quant_tensor=True)
+        self.relu1 = qnn.QuantReLU(act_quant=act_quant, bit_width=act_bit_width, return_quant_tensor=True)
         self.conv2 = make_quant_conv2d(
             planes,
             planes,
@@ -71,7 +79,8 @@ class QuantBasicBlock(nn.Module):
             padding=1,
             bias=bias,
             weight_bit_width=weight_bit_width,
-            weight_quant=weight_quant)
+            weight_quant=weight_quant,
+            act_quant=act_quant)
         self.bn2 = nn.BatchNorm2d(planes)
         self.downsample = nn.Sequential()
         if stride != 1 or in_planes != self.expansion * planes:
@@ -84,17 +93,18 @@ class QuantBasicBlock(nn.Module):
                     padding=0,
                     bias=bias,
                     weight_bit_width=weight_bit_width,
-                    weight_quant=weight_quant),
+                    weight_quant=weight_quant,
+                    act_quant=act_quant),
                 nn.BatchNorm2d(self.expansion * planes),
                 # We add a ReLU activation here because FINN requires the same sign along residual adds
-                qnn.QuantReLU(bit_width=act_bit_width, return_quant_tensor=True))
+                qnn.QuantReLU(act_quant=act_quant, bit_width=act_bit_width, return_quant_tensor=True))
             # Redefine shared_quant_act whenever shortcut is performing downsampling
             shared_quant_act = self.downsample[-1]
         if shared_quant_act is None:
-            shared_quant_act = qnn.QuantReLU(bit_width=act_bit_width, return_quant_tensor=True)
+            shared_quant_act = qnn.QuantReLU(act_quant=act_quant, bit_width=act_bit_width, return_quant_tensor=True)
         # We add a ReLU activation here because FINN requires the same sign along residual adds
         self.relu2 = shared_quant_act
-        self.relu_out = qnn.QuantReLU(return_quant_tensor=True, bit_width=act_bit_width)
+        self.relu_out = qnn.QuantReLU(act_quant=act_quant, return_quant_tensor=True, bit_width=act_bit_width)
 
     def forward(self, x):
         out = self.relu1(self.bn1(self.conv1(x)))
@@ -102,8 +112,9 @@ class QuantBasicBlock(nn.Module):
         if len(self.downsample):
             x = self.downsample(x)
         # Check that the addition is made explicitly among QuantTensor structures
-        assert isinstance(out, QuantTensor), "Perform add among QuantTensors"
-        assert isinstance(x, QuantTensor), "Perform add among QuantTensors"
+        if self.quant_type != 'FLOAT':
+            assert isinstance(out, QuantTensor), "Perform add among QuantTensors"
+            assert isinstance(x, QuantTensor), "Perform add among QuantTensors"
         out = out + x
         out = self.relu_out(out)
         return out
@@ -124,8 +135,11 @@ class QuantResNet(nn.Module):
             last_layer_bias_quant=Int32Bias,
             weight_quant=Int8WeightPerChannelFloat,
             first_layer_weight_quant=Int8WeightPerChannelFloat,
-            last_layer_weight_quant=Int8WeightPerTensorFloat):
+            last_layer_weight_quant=Int8WeightPerTensorFloat,
+            act_quant=None,
+            quant_type='FIXED'):
         super(QuantResNet, self).__init__()
+        self.quant_type = quant_type
         self.in_planes = 64
         self.conv1 = make_quant_conv2d(
             3,
@@ -134,9 +148,10 @@ class QuantResNet(nn.Module):
             stride=1,
             padding=1,
             weight_bit_width=8,
-            weight_quant=first_layer_weight_quant)
+            weight_quant=first_layer_weight_quant,
+            act_quant=act_quant)
         self.bn1 = nn.BatchNorm2d(64)
-        shared_quant_act = qnn.QuantReLU(bit_width=act_bit_width, return_quant_tensor=True)
+        shared_quant_act = qnn.QuantReLU(act_quant=act_quant, bit_width=act_bit_width, return_quant_tensor=True)
         self.relu = shared_quant_act
         # MaxPool is typically present for ImageNet but not for CIFAR10
         if first_maxpool:
@@ -145,20 +160,24 @@ class QuantResNet(nn.Module):
             self.maxpool = nn.Identity()
 
         self.layer1, shared_quant_act = self._make_layer(
-            block_impl, 64, num_blocks[0], 1, shared_quant_act, weight_bit_width, act_bit_width, weight_quant)
+            block_impl, 64, num_blocks[0], 1, shared_quant_act, weight_bit_width, act_bit_width, weight_quant, act_quant)
         self.layer2, shared_quant_act = self._make_layer(
-            block_impl, 128, num_blocks[1], 2, shared_quant_act, weight_bit_width, act_bit_width, weight_quant)
+            block_impl, 128, num_blocks[1], 2, shared_quant_act, weight_bit_width, act_bit_width, weight_quant, act_quant)
         self.layer3, shared_quant_act = self._make_layer(
-            block_impl, 256, num_blocks[2], 2, shared_quant_act, weight_bit_width, act_bit_width, weight_quant)
+            block_impl, 256, num_blocks[2], 2, shared_quant_act, weight_bit_width, act_bit_width, weight_quant, act_quant)
         self.layer4, _ = self._make_layer(
-            block_impl, 512, num_blocks[3], 2, shared_quant_act, weight_bit_width, act_bit_width, weight_quant)
+            block_impl, 512, num_blocks[3], 2, shared_quant_act, weight_bit_width, act_bit_width, weight_quant, act_quant)
 
-        # Performs truncation to 8b (without rounding), which is supported in FINN
-        avgpool_float_to_int_impl_type = 'ROUND' if round_average_pool else 'FLOOR'
-        self.final_pool = qnn.TruncAvgPool2d(
-            kernel_size=4,
-            trunc_quant=TruncTo8bit,
-            float_to_int_impl_type=avgpool_float_to_int_impl_type)
+        if self.quant_type == 'FLOAT':
+            self.final_pool = nn.AvgPool2d(
+                kernel_size=4)
+        else:
+            # Performs truncation to 8b (without rounding), which is supported in FINN
+            avgpool_float_to_int_impl_type = 'ROUND' if round_average_pool else 'FLOOR'
+            self.final_pool = qnn.TruncAvgPool2d(
+                kernel_size=4,
+                trunc_quant=TruncTo8bit,
+                float_to_int_impl_type=avgpool_float_to_int_impl_type)
         # Keep last layer at 8b
         self.linear = qnn.QuantLinear(
             512 * block_impl.expansion,
@@ -166,7 +185,8 @@ class QuantResNet(nn.Module):
             weight_bit_width=8,
             bias=True,
             bias_quant=last_layer_bias_quant,
-            weight_quant=last_layer_weight_quant)
+            weight_quant=last_layer_weight_quant,
+            input_quant=act_quant)
 
         for m in self.modules():
             if isinstance(m, nn.Conv2d):
@@ -190,7 +210,8 @@ class QuantResNet(nn.Module):
             shared_quant_act,
             weight_bit_width,
             act_bit_width,
-            weight_quant):
+            weight_quant,
+            act_quant):
         strides = [stride] + [1] * (num_blocks - 1)
         layers = []
         for stride in strides:
@@ -202,7 +223,8 @@ class QuantResNet(nn.Module):
                 shared_quant_act=shared_quant_act,
                 act_bit_width=act_bit_width,
                 weight_bit_width=weight_bit_width,
-                weight_quant=weight_quant)
+                weight_quant=weight_quant,
+                act_quant=act_quant)
             layers.append(block)
             shared_quant_act = layers[-1].relu_out
             self.in_planes = planes * block_impl.expansion
@@ -222,14 +244,118 @@ class QuantResNet(nn.Module):
         return out
 
 
-def quant_resnet18(cfg) -> QuantResNet:
-    weight_bit_width = cfg.getint('QUANT', 'WEIGHT_BIT_WIDTH')
-    act_bit_width = cfg.getint('QUANT', 'ACT_BIT_WIDTH')
+def float_weight_act_class_factory(
+    act_bit_width, weight_bit_width,
+    act_e_bits, act_m_bits,
+    weight_e_bits, weight_m_bits
+):
+    # Determine weight class
+    match weight_bit_width:
+        case 8: 
+            if weight_e_bits == 4 and weight_m_bits == 3:
+                weight_quant_class = Fp8e4m3Weight
+            elif weight_e_bits == 5 and weight_m_bits == 2:
+                weight_quant_class = Fp8e5m2Weight
+            else:
+                raise ValueError(f'Weight bitwidth {weight_bit_width} not supported for e_bits={weight_e_bits}, m_bits={weight_m_bits}')
+        case 6:
+            if weight_e_bits == 3 and weight_m_bits == 2:
+                weight_quant_class = Fp6e3m2Weight
+            elif weight_e_bits == 2 and weight_m_bits == 3:
+                weight_quant_class = Fp6e2m3Weight
+            else:
+                raise ValueError(f'Weight bitwidth {weight_bit_width} not supported for e_bits={weight_e_bits}, m_bits={weight_m_bits}')
+        case 4:
+            if weight_e_bits == 2 and weight_m_bits == 1:
+                weight_quant_class = Fp4e2m1Weight
+            else:
+                raise ValueError(f'Weight bitwidth {weight_bit_width} not supported for e_bits={weight_e_bits}, m_bits={weight_m_bits}')
+        case _:
+            raise ValueError(f'Weight bitwidth {weight_bit_width} not supported')
+
+    # Determine activation class
+    match act_bit_width:
+        case 8:
+            if act_e_bits == 4 and act_m_bits == 3:
+                act_quant_class = Fp8e4m3Act
+            elif act_e_bits == 5 and act_m_bits == 2:
+                act_quant_class = Fp8e5m2Act
+            else:
+                raise ValueError(f'Activation bitwidth {act_bit_width} not supported for e_bits={act_e_bits}, m_bits={act_m_bits}')
+        case 6:
+            if act_e_bits == 3 and act_m_bits == 2:
+                act_quant_class = Fp6e3m2Act
+            elif act_e_bits == 2 and act_m_bits == 3:
+                act_quant_class = Fp6e2m3Act
+            else:
+                raise ValueError(f'Activation bitwidth {act_bit_width} not supported for e_bits={act_e_bits}, m_bits={act_m_bits}')
+        case 4:
+            if act_e_bits == 2 and act_m_bits == 1:
+                act_quant_class = Fp4e2m1Act
+            else:
+                raise ValueError(f'Activation bitwidth {act_bit_width} not supported for e_bits={act_e_bits}, m_bits={act_m_bits}')
+        case _:
+            raise ValueError(f'Activation bitwidth {act_bit_width} not supported')
+
+    return weight_quant_class, act_quant_class
+
+
+def get_params_from_config(cfg):
+    
+    def get_float_params(cfg):
+        weight_bit_width = cfg.getint('FLOAT', 'WEIGHT_BIT_WIDTH')
+        weight_exp_bits = cfg.getint('FLOAT', 'WEIGHT_EXPONENT_BITS')
+        weight_mant_bits = cfg.getint('FLOAT', 'WEIGHT_MANTISSA_BITS')
+        act_bit_width = cfg.getint('FLOAT', 'ACT_BIT_WIDTH')
+        act_exp_bits = cfg.getint('FLOAT', 'ACT_EXPONENT_BITS')
+        act_mant_bits = cfg.getint('FLOAT', 'ACT_MANTISSA_BITS')
+        
+        assert weight_bit_width in [4, 6, 8], "Weight bit width must be one of [4, 6, 8]"
+        assert act_bit_width in [4, 6, 8], "Activation bit width must be one of [4, 6, 8]"
+        assert weight_exp_bits + weight_mant_bits + 1 == weight_bit_width, "Weight exponent and mantissa bits must sum to weight bit width"
+        assert act_exp_bits + act_mant_bits + 1 == act_bit_width, "Activation exponent and mantissa bits must sum to activation bit width"
+        
+        return weight_bit_width, weight_exp_bits, weight_mant_bits, act_bit_width, act_exp_bits, act_mant_bits
+
+    quant_type = cfg.get('QUANT', 'TYPE', fallback='FIXED')
     num_classes = cfg.getint('MODEL', 'NUM_CLASSES')
-    model = QuantResNet(
-        block_impl=QuantBasicBlock,
-        num_blocks=[2, 2, 2, 2],
-        num_classes=num_classes,
-        weight_bit_width=weight_bit_width,
-        act_bit_width=act_bit_width)
+    kwargs = {
+        'block_impl':QuantBasicBlock,
+        'num_blocks':[2, 2, 2, 2], 
+    }
+    kwargs['num_classes'] = num_classes
+    kwargs['weight_bit_width'] = weight_bit_width
+    kwargs['act_bit_width'] = act_bit_width
+    if quant_type == 'FLOAT':
+        weight_bit_width, weight_exp_bits, weight_mant_bits, act_bit_width, act_exp_bits, act_mant_bits = get_float_params(cfg)
+        weight_quant_class, act_quant_class = float_weight_act_class_factory(
+            act_bit_width, weight_bit_width, act_exp_bits, act_mant_bits, weight_exp_bits, weight_mant_bits
+        )
+        kwargs['weight_quant'] = weight_quant_class
+        kwargs['act_quant'] = act_quant_class
+        kwargs['first_layer_weight_quant'] = weight_quant_class
+        kwargs['last_layer_weight_quant'] = weight_quant_class
+        kwargs['last_layer_bias_quant'] = None
+    elif quant_type == 'FIXED':
+        # use the defaults, do not write the parameters
+        kwargs['weight_bit_width'] = cfg.getint('QUANT', 'WEIGHT_BIT_WIDTH')
+        kwargs['act_bit_width'] = cfg.getint('QUANT', 'ACT_BIT_WIDTH')
+    else:
+        raise ValueError('No valid QUANT value defined in the config')
+
+
+def quant_resnet18(cfg) -> QuantResNet:
+    kwargs = get_params_from_config(cfg)
+    # model = QuantResNet(
+    #     block_impl=QuantBasicBlock,
+    #     num_blocks=[2, 2, 2, 2],
+    #     num_classes=num_classes,
+    #     weight_bit_width=weight_bit_width,
+    #     act_bit_width=act_bit_width,
+    #     act_quant=Fp8e4m3OCPAct if quant_type == 'FLOAT' else Uint8ActPerTensorFloat,
+    #     last_layer_bias_quant=None if quant_type == 'FLOAT' else Int32Bias,
+    #     weight_quant=Fp8e4m3OCPWeight if quant_type == 'FLOAT' else Int8WeightPerChannelFloat,
+    #     first_layer_weight_quant=Fp8e4m3OCPWeight if quant_type == 'FLOAT' else Int8WeightPerChannelFloat,
+    #     last_layer_weight_quant=Fp8e4m3OCPWeight if quant_type == 'FLOAT' else Int8WeightPerTensorFloat)
+    model = QuantResNet(**kwargs)
     return model

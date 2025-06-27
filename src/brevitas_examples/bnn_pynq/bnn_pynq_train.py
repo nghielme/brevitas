@@ -73,6 +73,22 @@ def parse_args(args):
         "--state_dict_to_pth",
         action='store_true',
         help="Saves a model state_dict into a pth and then exits")
+    parser.add_argument(
+        "--disable_quant",
+        help="Train model without quantization",
+        action="store_true",
+        default=False)
+    parser.add_argument(
+        "--export_qonnx",
+        action="store_true",
+        help="Export model to QONNX format. Do not export with --disable_quant",
+        default=False)
+    parser.add_argument(
+        "--input_shape",
+        default="1,3,32,32",
+        help="Input shape for the model, e.g., 1,3,32,32 for CIFAR10"
+    )
+
     return parser.parse_args(args)
 
 
@@ -120,7 +136,11 @@ def launch(cmd_args):
         with torch.no_grad():
             trainer.eval_model()
     else:
-        trainer.train_model()
+            trainer.train_model()
+    
+    if args.export_qonnx:
+        print("Exporting model to QONNX format")
+        trainer.export_qonnx(args.input_shape)
 
 
 def main():

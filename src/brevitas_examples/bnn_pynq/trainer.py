@@ -18,6 +18,8 @@ from torchvision import transforms
 from torchvision.datasets import CIFAR10
 from torchvision.datasets import MNIST
 
+from brevitas.graph.calibrate import quantization_status_manager
+
 from .logger import EvalEpochMeters
 from .logger import Logger
 from .logger import TrainingEpochMeters
@@ -208,6 +210,23 @@ class Trainer(object):
             'best_val_acc': self.best_val_acc,},
                    best_path)
 
+
+    def quantization(is_training):
+        """Decorator to enable or disable quantization."""
+        def decorator(func):
+            def wrapper(*args, **kwargs):
+                if not isinstance(args[0], Trainer): # args[0] must be the Trainer instance
+                    raise TypeError("First argument to decorated function must be a Trainer instance.")
+                if args[0].args.disable_quant:
+                    with quantization_status_manager(args[0].model, disable_act_quant=True, disable_weight_quant=True, disable_bias_quant=True, is_training=is_training):
+                        return func(*args, **kwargs)
+                else:
+                    return func(*args, **kwargs)
+            return wrapper
+        return decorator
+
+
+    @quantization(is_training=True)
     def train_model(self):
 
         # training starts
@@ -294,7 +313,8 @@ class Trainer(object):
         if not self.args.dry_run:
             return os.path.join(self.checkpoints_dir_path, "best.tar")
 
-    def eval_model(self, epoch=None):
+    @quantization(is_training=False)
+    def eval_model(self):
         eval_meters = EvalEpochMeters()
 
         # switch to evaluate mode
@@ -345,3 +365,23 @@ class Trainer(object):
             self.logger.eval_batch_cli_log(eval_meters, i, len(self.test_loader))
 
         return eval_meters.top1.avg
+    
+    
+    def export_qonnx(self, input_shape):
+        from brevitas.export import export_qonnx
+
+        if input_shape is None:
+            raise ValueError("Input shape must be specified for QONNX export.")
+        
+        input_shape = tuple(map(int, input_shape.split(','))) # Convert to tuple of integers
+
+        state_dict = torch.load(os.path.join(self.output_dir_path, 'checkpoints', 'best.tar'), map_location='cpu')
+        self.model.load_state_dict(state_dict['state_dict'], strict=True)
+        self.model.eval()
+        
+        dummy_input = torch.randn(input_shape)
+        
+        export_path = os.path.join(self.output_dir_path, self.args.network, '_qonnx.onnx')
+        export_qonnx(self.model, dummy_input, export_path)
+
+        

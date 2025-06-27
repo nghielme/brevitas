@@ -3,7 +3,7 @@
 
 from brevitas.inject.enum import ScalingPerOutputType
 from brevitas.quant.base import MSESymmetricScale
-from brevitas.quant.experimental.float_base import FloatActBase
+from brevitas.quant.experimental.float_base import FloatActBase, Fp4e2m1Mixin, Fp6e3m2Mixin, Fp6e2m3Mixin
 from brevitas.quant.experimental.float_base import FloatWeightBase
 from brevitas.quant.experimental.float_base import Fp8e4m3Mixin
 from brevitas.quant.experimental.float_base import Fp8e5m2Mixin
@@ -25,6 +25,27 @@ class Fp8e5m2Weight(Fp8e5m2Mixin, FloatWeightBase):
     scaling_per_output_type = ScalingPerOutputType.TENSOR
 
 
+class Fp6e3m2Weight(Fp6e3m2Mixin, FloatWeightBase):
+    """
+    FP8 signed E5M2 weight quantizer.
+    """
+    scaling_per_output_type = ScalingPerOutputType.TENSOR
+
+
+class Fp6e2m3Weight(Fp6e2m3Mixin, FloatWeightBase):
+    """
+    FP8 signed E5M2 weight quantizer.
+    """
+    scaling_per_output_type = ScalingPerOutputType.TENSOR
+
+
+class Fp4e2m1Weight(Fp4e2m1Mixin, FloatWeightBase):
+    """
+    FP8 signed E5M2 weight quantizer.
+    """
+    scaling_per_output_type = ScalingPerOutputType.TENSOR
+
+
 class Fp8e4m3Act(Fp8e4m3Mixin, FloatActBase):
     """
     FP8 signed E4M3 activation quantizer.
@@ -33,6 +54,27 @@ class Fp8e4m3Act(Fp8e4m3Mixin, FloatActBase):
 
 
 class Fp8e5m2Act(Fp8e5m2Mixin, FloatActBase):
+    """
+    FP8 signed E5M2 activation quantizer.
+    """
+    scaling_per_output_type = ScalingPerOutputType.TENSOR
+
+
+class Fp6e3m2Act(Fp6e3m2Mixin, FloatActBase):
+    """
+    FP8 signed E5M2 activation quantizer.
+    """
+    scaling_per_output_type = ScalingPerOutputType.TENSOR
+
+
+class Fp6e2m3Act(Fp6e2m3Mixin, FloatActBase):
+    """
+    FP8 signed E5M2 activation quantizer.
+    """
+    scaling_per_output_type = ScalingPerOutputType.TENSOR
+
+
+class Fp4e2m1Act(Fp4e2m1Mixin, FloatActBase):
     """
     FP8 signed E5M2 activation quantizer.
     """
