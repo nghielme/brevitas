@@ -149,7 +149,7 @@ class QuantResNet(nn.Module):
             kernel_size=3,
             stride=1,
             padding=1,
-            weight_bit_width=8,
+            weight_bit_width=weight_bit_width,
             weight_quant=first_layer_weight_quant,
             act_quant=act_quant)
         self.bn1 = nn.BatchNorm2d(64)
@@ -184,7 +184,7 @@ class QuantResNet(nn.Module):
         self.linear = qnn.QuantLinear(
             512 * block_impl.expansion,
             num_classes,
-            weight_bit_width=8,
+            weight_bit_width=weight_bit_width,
             bias=True,
             bias_quant=last_layer_bias_quant,
             weight_quant=last_layer_weight_quant,
