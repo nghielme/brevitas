@@ -111,6 +111,7 @@ class objdict(dict):
 
 
 def launch(cmd_args):
+    print('PyTorch version: ', torch.__version__)
     args = parse_args(cmd_args)
 
     # Set relative paths relative to current workdir
