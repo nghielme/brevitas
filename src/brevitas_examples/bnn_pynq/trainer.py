@@ -375,13 +375,13 @@ class Trainer(object):
         
         input_shape = tuple(map(int, input_shape.split(','))) # Convert to tuple of integers
 
-        state_dict = torch.load(os.path.join(self.output_dir_path, 'checkpoints', 'best.tar'), map_location='cpu')
+        state_dict = torch.load(os.path.join(self.output_dir_path, 'checkpoints', 'best.tar'), map_location=self.device)
         self.model.load_state_dict(state_dict['state_dict'], strict=True)
-        self.model.eval()
+        self.model = self.model.to(self.device)
         
-        dummy_input = torch.randn(input_shape)
+        dummy_input = torch.randn(input_shape).to(self.device, non_blocking=True)
         
-        export_path = os.path.join(self.output_dir_path, self.args.network, '_qonnx.onnx')
+        export_path = os.path.join(self.output_dir_path, self.args.network + '_qonnx.onnx')
         export_qonnx(self.model, dummy_input, export_path)
 
         

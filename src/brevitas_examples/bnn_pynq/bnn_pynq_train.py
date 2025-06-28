@@ -139,7 +139,6 @@ def launch(cmd_args):
             trainer.train_model()
     
     if args.export_qonnx:
-        print("Exporting model to QONNX format")
         trainer.export_qonnx(args.input_shape)
 
 
@@ -151,3 +150,4 @@ if __name__ == "__main__":
     main()
 
 # --gpus 0 --num_workers 8 --network RESNET18_4W4A_FLOAT --experiments outputs --epochs 2 --export_qonnx
+# --gpus 0 --num_workers 8 --network RESNET18_4W4A_FLOAT --experiments outputs/RESNET18_4W4A_FLOAT_4W4A_20250628_100832 --evaluate
