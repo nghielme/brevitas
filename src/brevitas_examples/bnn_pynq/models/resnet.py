@@ -164,13 +164,13 @@ class QuantResNet(nn.Module):
             self.maxpool = nn.Identity()
 
         self.layer1, shared_quant_act = self._make_layer(
-            block_impl, 64, num_blocks[0], 1, shared_quant_act, weight_bit_width, act_bit_width, weight_quant, act_quant)
+            block_impl, 64, num_blocks[0], 1, shared_quant_act, weight_bit_width, act_bit_width, weight_quant, act_quant, quant_type)
         self.layer2, shared_quant_act = self._make_layer(
-            block_impl, 128, num_blocks[1], 2, shared_quant_act, weight_bit_width, act_bit_width, weight_quant, act_quant)
+            block_impl, 128, num_blocks[1], 2, shared_quant_act, weight_bit_width, act_bit_width, weight_quant, act_quant, quant_type)
         self.layer3, shared_quant_act = self._make_layer(
-            block_impl, 256, num_blocks[2], 2, shared_quant_act, weight_bit_width, act_bit_width, weight_quant, act_quant)
+            block_impl, 256, num_blocks[2], 2, shared_quant_act, weight_bit_width, act_bit_width, weight_quant, act_quant, quant_type)
         self.layer4, _ = self._make_layer(
-            block_impl, 512, num_blocks[3], 2, shared_quant_act, weight_bit_width, act_bit_width, weight_quant, act_quant)
+            block_impl, 512, num_blocks[3], 2, shared_quant_act, weight_bit_width, act_bit_width, weight_quant, act_quant, quant_type)
 
         if self.quant_type == 'FLOAT':
             self.final_pool = nn.AvgPool2d(
