@@ -378,6 +378,7 @@ class Trainer(object):
         state_dict = torch.load(os.path.join(self.output_dir_path, 'checkpoints', 'best.tar'), map_location=self.device)
         self.model.load_state_dict(state_dict['state_dict'], strict=True)
         self.model = self.model.to(self.device)
+        self.model.eval()
         
         dummy_input = torch.randn(input_shape).to(self.device, non_blocking=True)
         
