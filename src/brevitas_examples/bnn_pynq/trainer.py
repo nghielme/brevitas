@@ -375,7 +375,7 @@ class Trainer(object):
         
         input_shape = tuple(map(int, input_shape.split(','))) # Convert to tuple of integers
 
-        state_dict = torch.load(os.path.join(self.output_dir_path, 'checkpoints', 'best.tar'), map_location=self.device)
+        state_dict = torch.load(os.path.join(self.output_dir_path, 'checkpoints', 'best.tar'), map_location='cpu')
         self.model.load_state_dict(state_dict['state_dict'], strict=True)
         self.model.eval()
         
