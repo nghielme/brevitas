@@ -142,6 +142,7 @@ class QuantResNet(nn.Module):
             act_quant=None,
             quant_type='FIXED'):
         super(QuantResNet, self).__init__()
+        self.first_maxpool = first_maxpool
         self.quant_type = quant_type
         self.in_planes = 64
         self.conv1 = make_quant_conv2d(
@@ -160,8 +161,8 @@ class QuantResNet(nn.Module):
         # MaxPool is typically present for ImageNet but not for CIFAR10
         if first_maxpool:
             self.maxpool = nn.MaxPool2d(kernel_size=3, stride=2, padding=1)
-        else:
-            self.maxpool = nn.Identity()
+        # else:
+        #     self.maxpool = nn.Identity()
 
         self.layer1, shared_quant_act = self._make_layer(
             block_impl, 64, num_blocks[0], 1, shared_quant_act, weight_bit_width, act_bit_width, weight_quant, act_quant, quant_type)
@@ -239,7 +240,8 @@ class QuantResNet(nn.Module):
     def forward(self, x: Tensor):
         # There is no input quantizer, we assume the input is already 8b RGB
         out = self.relu(self.bn1(self.conv1(x)))
-        out = self.maxpool(out)
+        if self.first_maxpool:
+            out = self.maxpool(out)
         out = self.layer1(out)
         out = self.layer2(out)
         out = self.layer3(out)
