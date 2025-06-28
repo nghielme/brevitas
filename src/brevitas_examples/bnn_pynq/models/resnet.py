@@ -215,7 +215,8 @@ class QuantResNet(nn.Module):
             weight_bit_width,
             act_bit_width,
             weight_quant,
-            act_quant):
+            act_quant,
+            quant_type):
         strides = [stride] + [1] * (num_blocks - 1)
         layers = []
         for stride in strides:
@@ -228,7 +229,8 @@ class QuantResNet(nn.Module):
                 act_bit_width=act_bit_width,
                 weight_bit_width=weight_bit_width,
                 weight_quant=weight_quant,
-                act_quant=act_quant)
+                act_quant=act_quant,
+                quant_type=quant_type)
             layers.append(block)
             shared_quant_act = layers[-1].relu_out
             self.in_planes = planes * block_impl.expansion
