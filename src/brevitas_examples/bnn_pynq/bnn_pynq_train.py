@@ -151,4 +151,4 @@ if __name__ == "__main__":
     main()
 
 # --gpus 0 --num_workers 8 --network RESNET18_4W4A_FLOAT --experiments outputs --epochs 2 --export_qonnx
-# --gpus 0 --num_workers 8 --network RESNET18_8W8A_FLOAT --experiments outputs/RESNET18_8W8A_FLOAT_8W8A_20250628_171134 --evaluate
+# --gpus 0 --num_workers 8 --network RESNET18_8W8A_FLOAT --resume outputs/RESNET18_8W8A_FLOAT_8W8A_20250628_171134/checkpoints/best.tar --evaluate
