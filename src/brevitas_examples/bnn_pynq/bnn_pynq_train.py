@@ -111,7 +111,6 @@ class objdict(dict):
 
 
 def launch(cmd_args):
-    print('PyTorch version: ', torch.__version__)
     args = parse_args(cmd_args)
 
     # Set relative paths relative to current workdir
@@ -151,4 +150,4 @@ if __name__ == "__main__":
     main()
 
 # --gpus 0 --num_workers 8 --network RESNET18_4W4A_FLOAT --experiments outputs --epochs 2 --export_qonnx
-# --gpus 0 --num_workers 8 --network RESNET18_8W8A_FLOAT --resume outputs/RESNET18_8W8A_FLOAT_8W8A_20250628_171134/checkpoints/best.tar --evaluate
+# --gpus 0 --num_workers 8 --evaluate --network RESNET18_8W8A_FLOAT --resume outputs/RESNET18_8W8A_FLOAT_8W8A_20250628_171134/checkpoints/best.tar 
