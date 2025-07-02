@@ -250,38 +250,35 @@ class QuantResNet(nn.Module):
         out = self.linear(out)
         return out
 
-
-def float_weight_act_class_factory(
-    weight_bit_width, act_bit_width,
-    act_e_bits, act_m_bits,
-    weight_e_bits, weight_m_bits
-):
-    # Determine weight class
-    weight_quant = Fp8e4m3OCPWeight
-    weight_quant_class = weight_quant.let(**{'exponent_bit_width' : weight_e_bits, 'mantissa_bit_width' : weight_m_bits, 'bit_width' : weight_bit_width})
-    
-    act_quant = Fp8e4m3OCPAct
-    act_quant_class = act_quant.let(**{'exponent_bit_width' : act_e_bits, 'mantissa_bit_width' : act_m_bits, 'bit_width' : act_bit_width})
-
-    return weight_quant_class, act_quant_class
-
+def float_class_factory(cls, bit_width, e_bits, m_bits):
+    return cls.let(**{'exponent_bit_width': e_bits, 'mantissa_bit_width': m_bits, 'bit_width': bit_width})
 
 def get_params_from_config(cfg):
     
-    def get_float_params(cfg):
-        weight_bit_width = cfg.getint('QUANT', 'WEIGHT_BIT_WIDTH')
-        weight_exp_bits = cfg.getint('FLOAT', 'WEIGHT_EXPONENT_BITS')
-        weight_mant_bits = cfg.getint('FLOAT', 'WEIGHT_MANTISSA_BITS')
-        act_bit_width = cfg.getint('QUANT', 'ACT_BIT_WIDTH')
-        act_exp_bits = cfg.getint('FLOAT', 'ACT_EXPONENT_BITS')
-        act_mant_bits = cfg.getint('FLOAT', 'ACT_MANTISSA_BITS')
+    def get_float_params(cfg, section, param_type):
+        bit_width = cfg.getint(section, param_type + '_BIT_WIDTH')
+        exp_bits = cfg.getint(section, param_type + '_EXPONENT_BITS')
+        mant_bits = cfg.getint(section, param_type + '_MANTISSA_BITS')
+
+        assert bit_width in [4, 6, 8], f"{section} bit width must be one of [4, 6, 8]"
+        assert exp_bits + mant_bits + 1 == bit_width, f"{section} exponent and mantissa bits must sum to bit width"
         
-        assert weight_bit_width in [4, 6, 8], "Weight bit width must be one of [4, 6, 8]"
-        assert act_bit_width in [4, 6, 8], "Activation bit width must be one of [4, 6, 8]"
-        assert weight_exp_bits + weight_mant_bits + 1 == weight_bit_width, "Weight exponent and mantissa bits must sum to weight bit width"
-        assert act_exp_bits + act_mant_bits + 1 == act_bit_width, "Activation exponent and mantissa bits must sum to activation bit width"
+        return bit_width, exp_bits, mant_bits
+    
+    # def get_float_weights_activations_params(cfg):
+    #     weight_bit_width = cfg.getint('QUANT', 'WEIGHT_BIT_WIDTH')
+    #     weight_exp_bits = cfg.getint('QUANT', 'WEIGHT_EXPONENT_BITS')
+    #     weight_mant_bits = cfg.getint('QUANT', 'WEIGHT_MANTISSA_BITS')
+    #     act_bit_width = cfg.getint('QUANT', 'ACT_BIT_WIDTH')
+    #     act_exp_bits = cfg.getint('QUANT', 'ACT_EXPONENT_BITS')
+    #     act_mant_bits = cfg.getint('QUANT', 'ACT_MANTISSA_BITS')
         
-        return weight_bit_width, weight_exp_bits, weight_mant_bits, act_bit_width, act_exp_bits, act_mant_bits
+    #     assert weight_bit_width in [4, 6, 8], "Weight bit width must be one of [4, 6, 8]"
+    #     assert act_bit_width in [4, 6, 8], "Activation bit width must be one of [4, 6, 8]"
+    #     assert weight_exp_bits + weight_mant_bits + 1 == weight_bit_width, "Weight exponent and mantissa bits must sum to weight bit width"
+    #     assert act_exp_bits + act_mant_bits + 1 == act_bit_width, "Activation exponent and mantissa bits must sum to activation bit width"
+        
+    #     return weight_bit_width, weight_exp_bits, weight_mant_bits, act_bit_width, act_exp_bits, act_mant_bits
 
     quant_type = cfg.get('QUANT', 'TYPE', fallback='FIXED')
     num_classes = cfg.getint('MODEL', 'NUM_CLASSES')
@@ -292,16 +289,39 @@ def get_params_from_config(cfg):
     }
     kwargs['num_classes'] = num_classes
     if quant_type == 'FLOAT':
-        weight_bit_width, weight_exp_bits, weight_mant_bits, act_bit_width, act_exp_bits, act_mant_bits = get_float_params(cfg)
-        weight_quant_class, act_quant_class = float_weight_act_class_factory(
-            weight_bit_width, act_bit_width, act_exp_bits, act_mant_bits, weight_exp_bits, weight_mant_bits
+        weight_bit_width, weight_exp_bits, weight_mant_bits, act_bit_width, act_exp_bits, act_mant_bits = get_float_params(cfg, 'QUANT', 'WEIGHT'), get_float_params(cfg, 'QUANT', 'ACT')
+        weight_quant_class, act_quant_class = float_class_factory(
+            Fp8e4m3OCPWeight, weight_bit_width, weight_exp_bits, weight_mant_bits
+        ), float_class_factory(
+            Fp8e4m3OCPAct, act_bit_width, act_exp_bits, act_mant_bits
         )
         kwargs['weight_bit_width'] = weight_bit_width
         kwargs['act_bit_width'] = act_bit_width
         kwargs['weight_quant'] = weight_quant_class
         kwargs['act_quant'] = act_quant_class
-        kwargs['first_layer_weight_quant'] = weight_quant_class
-        kwargs['last_layer_weight_quant'] = weight_quant_class
+        kwargs['first_layer_weight_quant'] = weight_quant_class # default case, no first layer quantization
+        kwargs['last_layer_weight_quant'] = weight_quant_class # default case, no last layer quantization
+        kwargs['last_layer_bias_quant'] = None
+        if cfg.has_option('FIRST_LAYER_QUANT', 'TYPE'):
+            first_layer_quant_type = cfg.get('FIRST_LAYER_QUANT', 'TYPE')
+            if first_layer_quant_type == 'FLOAT':
+                first_layer_weight_bit_width, first_layer_weight_exp_bits, first_layer_weight_mant_bits = get_float_params(cfg, 'FIRST_LAYER_QUANT', 'WEIGHT')
+                kwargs['first_layer_weight_quant'] = float_class_factory(
+                    Fp8e4m3OCPWeight, first_layer_weight_bit_width, first_layer_weight_exp_bits, first_layer_weight_mant_bits
+                )
+            else:
+                raise ValueError(f'Invalid FIRST_LAYER_QUANT type: {first_layer_quant_type}')
+        if cfg.has_option('LAST_LAYER_QUANT', 'TYPE'):
+            last_layer_quant_type = cfg.get('LAST_LAYER_QUANT', 'TYPE')
+            if last_layer_quant_type == 'FLOAT':
+                last_layer_weight_bit_width, last_layer_weight_exp_bits, last_layer_weight_mant_bits = get_float_params(cfg, 'LAST_LAYER_QUANT', 'WEIGHT')
+                # Use the same act quant as for the rest of the
+                kwargs['last_layer_weight_quant'] = float_class_factory(
+                    Fp8e4m3OCPWeight, last_layer_weight_bit_width, last_layer_weight_exp_bits, last_layer_weight_mant_bits
+                )
+            else:
+                raise ValueError(f'Invalid LAST_LAYER_QUANT type: {last_layer_quant_type}')
+            
         kwargs['last_layer_bias_quant'] = None
     elif quant_type == 'FIXED':
         # use the defaults, do not write the parameters

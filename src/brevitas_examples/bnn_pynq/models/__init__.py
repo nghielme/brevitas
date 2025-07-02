@@ -22,7 +22,13 @@ __all__ = [
     'resnet18_4w4a',
     'resnet18_8w8a_float',
     'resnet18_6w6a_float',
+    'resnet18_6w6a_8w8a_last_layer_float',
+    'resnet18_6w6a_8w8a_first_layer_float',
+    'resnet18_6w6a_8w8a_first_last_layer_float',
     'resnet18_4w4a_float',
+    'resnet18_4w4a_8w8a_last_layer_float',
+    'resnet18_4w4a_8w8a_first_layer_float',
+    'resnet18_4w4a_8w8a_first_last_layer_float',
     'model_with_cfg']
 
 from .CNV import cnv
@@ -117,7 +123,31 @@ def resnet18_8w8a_float(pretrained=False):
     return model
 
 def resnet18_6w6a_float(pretrained=False):
-    model, _ = model_with_cfg('resnet18_8w8a_float', pretrained)
+    model, _ = model_with_cfg('resnet18_6w6a_float', pretrained)
+    return model
+
+def resnet18_6w6a_8w8a_last_layer_float(pretrained=False):
+    model, _ = model_with_cfg('resnet18_6w6a_8w8a_last_layer_float', pretrained)
+    return model
+
+def resnet18_6w6a_8w8a_first_layer_float(pretrained=False):
+    model, _ = model_with_cfg('resnet18_6w6a_8w8a_first_layer_float', pretrained)
+    return model
+
+def resnet18_6w6a_8w8a_first_last_layer_float(pretrained=False):
+    model, _ = model_with_cfg('resnet18_6w6a_8w8a_first_last_layer_float', pretrained)
+    return model
+
+def resnet18_4w4a_8w8a_last_layer_float(pretrained=False):
+    model, _ = model_with_cfg('resnet18_4w4a_8w8a_last_layer_float', pretrained)
+    return model
+
+def resnet18_4w4a_8w8a_first_layer_float(pretrained=False):
+    model, _ = model_with_cfg('resnet18_4w4a_8w8a_first_layer_float', pretrained)
+    return model
+
+def resnet18_4w4a_8w8a_first_last_layer_float(pretrained=False):
+    model, _ = model_with_cfg('resnet18_4w4a_8w8a_first_last_layer_float', pretrained)
     return model
 
 def resnet18_4w4a_float(pretrained=False):
