@@ -302,7 +302,7 @@ def get_params_from_config(cfg):
         kwargs['first_layer_weight_quant'] = weight_quant_class # default case, no first layer quantization
         kwargs['last_layer_weight_quant'] = weight_quant_class # default case, no last layer quantization
         kwargs['last_layer_bias_quant'] = None
-        if cfg.has_option('FIRST_LAYER_QUANT', 'TYPE'):
+        if cfg.get('FIRST_LAYER_QUANT', 'TYPE'):
             first_layer_quant_type = cfg.get('FIRST_LAYER_QUANT', 'TYPE')
             if first_layer_quant_type == 'FLOAT':
                 first_layer_weight_bit_width, first_layer_weight_exp_bits, first_layer_weight_mant_bits = get_float_params(cfg, 'FIRST_LAYER_QUANT', 'WEIGHT')
@@ -311,7 +311,7 @@ def get_params_from_config(cfg):
                 )
             else:
                 raise ValueError(f'Invalid FIRST_LAYER_QUANT type: {first_layer_quant_type}')
-        if cfg.has_option('LAST_LAYER_QUANT', 'TYPE'):
+        if cfg.get('LAST_LAYER_QUANT', 'TYPE'):
             last_layer_quant_type = cfg.get('LAST_LAYER_QUANT', 'TYPE')
             if last_layer_quant_type == 'FLOAT':
                 last_layer_weight_bit_width, last_layer_weight_exp_bits, last_layer_weight_mant_bits = get_float_params(cfg, 'LAST_LAYER_QUANT', 'WEIGHT')
