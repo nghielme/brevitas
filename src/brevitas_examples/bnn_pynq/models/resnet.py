@@ -289,7 +289,7 @@ def get_params_from_config(cfg):
     }
     kwargs['num_classes'] = num_classes
     if quant_type == 'FLOAT':
-        weight_bit_width, weight_exp_bits, weight_mant_bits, act_bit_width, act_exp_bits, act_mant_bits = get_float_params(cfg, 'QUANT', 'WEIGHT'), get_float_params(cfg, 'QUANT', 'ACT')
+        weight_bit_width, weight_exp_bits, weight_mant_bits, act_bit_width, act_exp_bits, act_mant_bits = *get_float_params(cfg, 'QUANT', 'WEIGHT'), *get_float_params(cfg, 'QUANT', 'ACT')
         weight_quant_class, act_quant_class = float_class_factory(
             Fp8e4m3OCPWeight, weight_bit_width, weight_exp_bits, weight_mant_bits
         ), float_class_factory(
@@ -302,7 +302,7 @@ def get_params_from_config(cfg):
         kwargs['first_layer_weight_quant'] = weight_quant_class # default case, no first layer quantization
         kwargs['last_layer_weight_quant'] = weight_quant_class # default case, no last layer quantization
         kwargs['last_layer_bias_quant'] = None
-        if cfg.get('FIRST_LAYER_QUANT', 'TYPE'):
+        if 'FIRST_LAYER_QUANT' in cfg:
             first_layer_quant_type = cfg.get('FIRST_LAYER_QUANT', 'TYPE')
             if first_layer_quant_type == 'FLOAT':
                 first_layer_weight_bit_width, first_layer_weight_exp_bits, first_layer_weight_mant_bits = get_float_params(cfg, 'FIRST_LAYER_QUANT', 'WEIGHT')
@@ -311,7 +311,7 @@ def get_params_from_config(cfg):
                 )
             else:
                 raise ValueError(f'Invalid FIRST_LAYER_QUANT type: {first_layer_quant_type}')
-        if cfg.get('LAST_LAYER_QUANT', 'TYPE'):
+        if 'LAST_LAYER_QUANT' in cfg:
             last_layer_quant_type = cfg.get('LAST_LAYER_QUANT', 'TYPE')
             if last_layer_quant_type == 'FLOAT':
                 last_layer_weight_bit_width, last_layer_weight_exp_bits, last_layer_weight_mant_bits = get_float_params(cfg, 'LAST_LAYER_QUANT', 'WEIGHT')
@@ -322,7 +322,6 @@ def get_params_from_config(cfg):
             else:
                 raise ValueError(f'Invalid LAST_LAYER_QUANT type: {last_layer_quant_type}')
             
-        kwargs['last_layer_bias_quant'] = None
     elif quant_type == 'FIXED':
         # use the defaults, do not write the parameters
         kwargs['weight_bit_width'] = cfg.getint('QUANT', 'WEIGHT_BIT_WIDTH')
