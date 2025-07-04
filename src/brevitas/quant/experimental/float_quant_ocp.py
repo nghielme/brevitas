@@ -6,7 +6,7 @@ from dependencies import value
 from brevitas.inject import ExtendedInjector
 from brevitas.inject.enum import ScalingPerOutputType
 from brevitas.quant.base import MSESymmetricScale
-from brevitas.quant.experimental.float_base import FloatActBase
+from brevitas.quant.experimental.float_base import FloatActBase, Fp4e2m1Mixin, Fp6e3m2Mixin
 from brevitas.quant.experimental.float_base import FloatWeightBase
 from brevitas.quant.experimental.float_base import Fp8e4m3Mixin
 from brevitas.quant.experimental.float_base import Fp8e5m2Mixin
@@ -234,5 +234,35 @@ class Fp8e5m2OCPWeightPerTensorFloatMSE(FpOCPWeightPerTensorFloatMSE, Fp8e5m2Mix
 class Fp8e5m2OCPWeightPerChannelFloatMSE(FpOCPWeightPerChannelFloatMSE, Fp8e5m2Mixin):
     """
     OCP FP8 e5m2 MSE-based per-channel scaled signed weight quantizer.
+    """
+    pass
+
+# FP6 E3M2 Quantizers
+
+class Fp6e3m2OCPWeight(FpOCPWeight, Fp6e3m2Mixin):
+    """
+    OCP FP6 E3M2 signed weight quantizer.
+    """
+    pass
+
+
+class Fp6e3m2OCPAct(FpOCPAct, Fp6e3m2Mixin):
+    """
+    OCP FP6 E3M2 signed act quantizer.
+    """
+    pass
+
+# FP4 E2M1 Quantizers
+
+class Fp4e2m1OCPWeight(FpOCPWeight, Fp4e2m1Mixin):
+    """
+    OCP FP4 E2M1 signed weight quantizer.
+    """
+    pass
+
+
+class Fp4e2m1OCPAct(FpOCPAct, Fp4e2m1Mixin):
+    """
+    OCP FP4 E2M1 signed act quantizer.
     """
     pass

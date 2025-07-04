@@ -151,7 +151,7 @@ class QuantResNet(nn.Module):
             kernel_size=3,
             stride=1,
             padding=1,
-            weight_bit_width=weight_bit_width,
+            weight_bit_width=first_layer_weight_quant.bit_width, # first layer might have different bit width, use directly the value set in the quantizer object
             weight_quant=first_layer_weight_quant,
             input_quant=act_quant, # first layer, add quant to input
             output_quant=act_quant)
@@ -187,10 +187,10 @@ class QuantResNet(nn.Module):
         self.linear = qnn.QuantLinear(
             512 * block_impl.expansion,
             num_classes,
-            weight_bit_width=weight_bit_width,
+            weight_bit_width=last_layer_weight_quant.bit_width, # last layer might have different bit width, use directly the value set in the quantizer object
             bias=True,
             bias_quant=last_layer_bias_quant,
-            weight_quant=last_layer_weight_quant,
+            weight_quant=last_layer_weight_quant, 
             input_quant=act_quant)
 
         for m in self.modules():
