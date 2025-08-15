@@ -260,25 +260,9 @@ def get_params_from_config(cfg):
         exp_bits = cfg.getint(section, param_type + '_EXPONENT_BITS')
         mant_bits = cfg.getint(section, param_type + '_MANTISSA_BITS')
 
-        assert bit_width in [4, 6, 8], f"{section} bit width must be one of [4, 6, 8]"
         assert exp_bits + mant_bits + 1 == bit_width, f"{section} exponent and mantissa bits must sum to bit width"
         
         return bit_width, exp_bits, mant_bits
-    
-    # def get_float_weights_activations_params(cfg):
-    #     weight_bit_width = cfg.getint('QUANT', 'WEIGHT_BIT_WIDTH')
-    #     weight_exp_bits = cfg.getint('QUANT', 'WEIGHT_EXPONENT_BITS')
-    #     weight_mant_bits = cfg.getint('QUANT', 'WEIGHT_MANTISSA_BITS')
-    #     act_bit_width = cfg.getint('QUANT', 'ACT_BIT_WIDTH')
-    #     act_exp_bits = cfg.getint('QUANT', 'ACT_EXPONENT_BITS')
-    #     act_mant_bits = cfg.getint('QUANT', 'ACT_MANTISSA_BITS')
-        
-    #     assert weight_bit_width in [4, 6, 8], "Weight bit width must be one of [4, 6, 8]"
-    #     assert act_bit_width in [4, 6, 8], "Activation bit width must be one of [4, 6, 8]"
-    #     assert weight_exp_bits + weight_mant_bits + 1 == weight_bit_width, "Weight exponent and mantissa bits must sum to weight bit width"
-    #     assert act_exp_bits + act_mant_bits + 1 == act_bit_width, "Activation exponent and mantissa bits must sum to activation bit width"
-        
-    #     return weight_bit_width, weight_exp_bits, weight_mant_bits, act_bit_width, act_exp_bits, act_mant_bits
 
     quant_type = cfg.get('QUANT', 'TYPE', fallback='FIXED')
     num_classes = cfg.getint('MODEL', 'NUM_CLASSES')

@@ -315,6 +315,8 @@ class Trainer(object):
 
     @quantization(is_training=False)
     def eval_model(self):
+        import json
+
         eval_meters = EvalEpochMeters()
 
         # switch to evaluate mode
@@ -364,6 +366,17 @@ class Trainer(object):
             # Eval batch ends
             self.logger.eval_batch_cli_log(eval_meters, i, len(self.test_loader))
 
+        # Save accuracies to json at the end of evaluation
+        if not self.args.dry_run:
+            accuracy_data = {
+            'model': self.args.network,
+            'top1_accuracy': eval_meters.top1.avg,
+            'top5_accuracy': eval_meters.top5.avg
+            }
+            accuracy_file = os.path.join(self.output_dir_path, 'accuracy.json')
+            with open(accuracy_file, 'w') as f:
+                json.dump(accuracy_data, f, indent=4)
+        
         return eval_meters.top1.avg
     
     
