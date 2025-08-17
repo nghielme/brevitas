@@ -228,10 +228,17 @@ class Trainer(object):
 
     @quantization(is_training=True)
     def train_model(self):
-
         # training starts
         if self.args.detect_nan:
             torch.autograd.set_detect_anomaly(True)
+
+        # Initialize early stopping variables
+        best_val_acc = float('-inf')  # Still track best accuracy
+        best_model_state = None
+        best_optim_state = None
+        best_epoch = None
+        patience_counter = 0
+        early_stop = False
 
         for epoch in range(self.starting_epoch, self.args.epochs):
 
@@ -302,15 +309,52 @@ class Trainer(object):
             with torch.no_grad():
                 top1avg = self.eval_model()
 
-            # checkpoint
-            if top1avg >= self.best_val_acc and not self.args.dry_run:
-                self.best_val_acc = top1avg
-                self.checkpoint_best(epoch, "best.tar")
-            elif not self.args.dry_run:
+            if not self.args.dry_run:
+                # Save regular checkpoint
                 self.checkpoint_best(epoch, "checkpoint.tar")
+
+                # Update best model if validation accuracy improves
+                if top1avg > self.best_val_acc:
+                    self.best_val_acc = top1avg
+                    self.checkpoint_best(epoch, "best.tar")
+
+                # Early stopping logic
+                if hasattr(self.args, 'early_stopping') and self.args.early_stopping:
+                    # Check if improvement is significant
+                    improvement = top1avg - best_val_acc
+                    if improvement > self.args.min_delta:
+                        best_val_acc = top1avg
+                        patience_counter = 0
+                        best_model_state = {k: v.cpu().clone() for k, v in self.model.state_dict().items()}
+                        best_optim_state = {k: v.clone() if isinstance(v, torch.Tensor) else v 
+                                          for k, v in self.optimizer.state_dict().items()}
+                        best_epoch = epoch
+                        self.logger.info(f"Epoch {epoch}: Validation accuracy improved by {improvement:.4f}")
+                    else:
+                        patience_counter += 1
+                        self.logger.info(f"Epoch {epoch}: No improvement. Patience: {patience_counter}/{self.args.patience}")
+
+                    # Check if we should stop
+                    if patience_counter >= self.args.patience:
+                        self.logger.info(
+                            f"\nEarly stopping triggered after {epoch} epochs:\n"
+                            f"Best validation accuracy: {best_val_acc:.4f} (epoch {best_epoch})\n"
+                            f"No improvement greater than {self.args.min_delta} for {self.args.patience} epochs"
+                        )
+                        # Restore best model and optimizer states
+                        self.model.load_state_dict(best_model_state)
+                        self.optimizer.load_state_dict(best_optim_state)
+                        early_stop = True
+                        break
+
+            # Check for early stopping
+            if early_stop:
+                break
 
         # training ends
         if not self.args.dry_run:
+            if hasattr(self.args, 'early_stopping') and self.args.early_stopping:
+                self.logger.info(f"Training finished. Best validation accuracy: {best_val_acc:.4f} at epoch {best_epoch}")
             return os.path.join(self.checkpoints_dir_path, "best.tar")
 
     @quantization(is_training=False)

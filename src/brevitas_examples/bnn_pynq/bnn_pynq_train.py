@@ -65,6 +65,10 @@ def parse_args(args):
     parser.add_argument("--weight_decay", default=0, type=float, help="Weight decay")
     parser.add_argument("--epochs", default=1000, type=int, help="Number of epochs")
     parser.add_argument("--random_seed", default=1, type=int, help="Random seed")
+    # Early stopping parameters
+    parser.add_argument("--early_stopping", action="store_true", help="Enable early stopping")
+    parser.add_argument("--patience", type=int, default=20, help="Number of epochs to wait for improvement before early stopping")
+    parser.add_argument("--min_delta", type=float, default=0.0001, help="Minimum change in validation accuracy to qualify as an improvement")
     # Neural network Architecture
     parser.add_argument("--network", default="LFC_1W1A", type=str, help="neural network")
     parser.add_argument("--pretrained", action='store_true', help="Load pretrained model")
