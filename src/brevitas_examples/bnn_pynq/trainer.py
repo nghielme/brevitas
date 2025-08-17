@@ -233,7 +233,7 @@ class Trainer(object):
             torch.autograd.set_detect_anomaly(True)
 
         # Initialize early stopping variables
-        best_val_acc = float('-inf')  # Still track best accuracy
+        best_val_acc = float('-inf')
         best_model_state = None
         best_optim_state = None
         best_epoch = None
