@@ -190,7 +190,7 @@ class Trainer(object):
 
         # LR scheduler
         if args.scheduler == 'STEP':
-            milestones = [int(re.findall(r'\d+', i)) for i in args.milestones.split(',')]
+            milestones = [int(re.search(r'\d+', i).group()) for i in args.milestones.split(',')]
             self.scheduler = MultiStepLR(optimizer=self.optimizer, milestones=milestones, gamma=0.1)
         elif args.scheduler == 'FIXED':
             self.scheduler = None
