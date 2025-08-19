@@ -6,6 +6,7 @@ from hashlib import sha256
 import os
 import random
 import time
+import re
 
 from packaging.version import parse
 import torch
@@ -189,7 +190,7 @@ class Trainer(object):
 
         # LR scheduler
         if args.scheduler == 'STEP':
-            milestones = [int(i) for i in args.milestones.split(',')]
+            milestones = [int(re.findall(r'\d+', i)) for i in args.milestones.split(',')]
             self.scheduler = MultiStepLR(optimizer=self.optimizer, milestones=milestones, gamma=0.1)
         elif args.scheduler == 'FIXED':
             self.scheduler = None
