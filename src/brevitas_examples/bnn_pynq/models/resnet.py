@@ -12,7 +12,7 @@ from brevitas.quant import Int8WeightPerChannelFloat
 from brevitas.quant import Int8WeightPerTensorFloat
 from brevitas.quant import Int32Bias
 from brevitas.quant import TruncTo8bit
-from brevitas.quant.experimental.float_quant_ocp import Fp8e4m3OCPAct, Fp8e4m3OCPWeight
+from brevitas.quant.experimental.float_quant_ocp import Fp8e4m3OCPAct, Fp8e4m3OCPActPerTensorFloat, Fp8e4m3OCPWeight, Fp8e4m3OCPWeightPerTensorFloat
 from brevitas.quant_tensor.base_quant_tensor import QuantTensor
 
 
@@ -275,9 +275,9 @@ def get_params_from_config(cfg):
     if quant_type == 'FLOAT':
         weight_bit_width, weight_exp_bits, weight_mant_bits, act_bit_width, act_exp_bits, act_mant_bits = *get_float_params(cfg, 'QUANT', 'WEIGHT'), *get_float_params(cfg, 'QUANT', 'ACT')
         weight_quant_class, act_quant_class = float_class_factory(
-            Fp8e4m3OCPWeight, weight_bit_width, weight_exp_bits, weight_mant_bits
+            Fp8e4m3OCPWeightPerTensorFloat, weight_bit_width, weight_exp_bits, weight_mant_bits
         ), float_class_factory(
-            Fp8e4m3OCPAct, act_bit_width, act_exp_bits, act_mant_bits
+            Fp8e4m3OCPActPerTensorFloat, act_bit_width, act_exp_bits, act_mant_bits
         )
         kwargs['weight_bit_width'] = weight_bit_width
         kwargs['act_bit_width'] = act_bit_width
